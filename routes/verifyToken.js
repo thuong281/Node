@@ -9,6 +9,6 @@ module.exports = function auth(req, res, next) {
     req.user = verified;
     next();
   } catch (err) {
-    return res.status(400).send({ msg: "invalid token" });
+    return res.status(500).send({ msg: "Invalid token" });
   }
 };

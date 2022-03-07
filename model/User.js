@@ -17,6 +17,22 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  userFollowerPending: {
+    type: Array,
+    default: [],
+  },
+  userFollower: {
+    type: Array,
+    default: [],
+  },
+  userFollowing: {
+    type: Array,
+    default: [],
+  },
+  userFollowingPending: {
+    type: Array,
+    default: [],
+  },
 });
 
 module.exports = mongoose.model("User", userSchema);

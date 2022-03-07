@@ -17,17 +17,17 @@ app.use("/api/user", verify);
 
 // import route
 const authRoute = require("./routes/auth");
-const testRoute = require("./routes/sucCac");
 const userKYCRoute = require("./routes/userKYC");
+const userRoute = require("./routes/user");
 
 // route middlewares
 
 //authen route
 app.use("/", authRoute);
-app.use("/api/test", testRoute);
 
-// upload user document
+// api user
 app.use("/api/user", userKYCRoute);
+app.use("/api/user", userRoute);
 
 app.listen(8000, () => {
   console.log("Sục cặc bắn tinh");

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { array } = require("../utils/multer");
 
 const userKYCSchema = new mongoose.Schema({
   userId: {

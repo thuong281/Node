@@ -41,7 +41,7 @@ router.post("/upload-kyc", upload.array("image", 2), async (req, res) => {
     await userKYC.save();
     return res.status(201).send({ msg: "Upload thành công" });
   } catch (err) {
-    return res.status(400).send({ msg: "Upload thất bại" });
+    return res.status(500).send({ msg: "Upload thất bại" });
   }
 });
 
@@ -54,7 +54,7 @@ router.get("/user-kyc", async (req, res) => {
       data: users,
     });
   } catch (err) {
-    return res.status(400).send({ msg: err });
+    return res.status(500).send({ msg: err });
   }
 });
 
@@ -71,7 +71,7 @@ router.delete("/user-kyc/:_id", async (req, res) => {
       return res.status(400).send({ msg: "Xóa không thành công" });
     }
   } catch (err) {
-    return res.status(400).send({ msg: err });
+    return res.status(500).send({ msg: err });
   }
 });
 
@@ -89,7 +89,7 @@ router.put("/user-kyc/confirm/:_id", async (req, res) => {
       return res.status(200).send({ msg: "Xác thực thành công" });
     });
   } catch (err) {
-    return res.status(400).send({ msg: err });
+    return res.status(500).send({ msg: err });
   }
 });
 
