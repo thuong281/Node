@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema({
     type: Array,
     default: [],
   },
+  listDevice: [String],
+  isAdmin: {
+    type: String,
+    required: true,
+  },
 });
 
 module.exports = mongoose.model("User", userSchema);

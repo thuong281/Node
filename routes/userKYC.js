@@ -45,9 +45,16 @@ router.post("/upload-kyc", upload.array("image", 2), async (req, res) => {
   }
 });
 
-// get all user KYC
+// get all user KYC not verified
 router.get("/user-kyc", async (req, res) => {
   try {
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const isAdmin = verified.is_admin;
+
+    if (isAdmin == 0)
+      return res.status(400).send({ msg: "Chỉ admin mới được lấy thông tin" });
+
     const users = await UserKYC.find();
     return res.status(200).send({
       msg: "Thành công",
@@ -59,13 +66,24 @@ router.get("/user-kyc", async (req, res) => {
 });
 
 // delete specific user kyc
-router.delete("/user-kyc/:_id", async (req, res) => {
+router.delete("/user-kyc/delete/:_id", async (req, res) => {
   try {
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const isAdmin = verified.is_admin;
+
+    if (isAdmin == 0)
+      return res.status(400).send({ msg: "Chỉ admin mới được xóa tài liệu" });
+
     const user = await UserKYC.findOne({ userId: req.params._id });
+
+    if (!user) return res.status(404).send({ msg: "Không tìm thấý user" });
+
     await cloudinary.uploader.destroy(user.cloudinary_id_1);
     await cloudinary.uploader.destroy(user.cloudinary_id_2);
-    const cac = await user.remove();
-    if (cac.userId) {
+    const userRemoved = await user.remove();
+
+    if (userRemoved.userId) {
       res.status(200).send({ msg: "Xóa thành công" });
     } else {
       return res.status(400).send({ msg: "Xóa không thành công" });
@@ -78,19 +96,55 @@ router.delete("/user-kyc/:_id", async (req, res) => {
 // approve user kyc
 router.put("/user-kyc/confirm/:_id", async (req, res) => {
   try {
-    await UserKYC.findOneAndUpdate(
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const isAdmin = verified.is_admin;
+
+    if (isAdmin == 0)
+      return res
+        .status(400)
+        .send({ msg: "Chỉ admin mới được xác nhận tài liệu" });
+
+    const userKYC = await UserKYC.findOneAndUpdate(
       { userId: req.params._id },
       {
         $set: {
           verified: 1,
         },
       }
-    ).then((result) => {
-      return res.status(200).send({ msg: "Xác thực thành công" });
-    });
+    );
+    if (!userKYC) return res.status(404).send({ msg: "Không tìm thấý user" });
+    return res.status(200).send({ msg: "Xác thực thành công" });
   } catch (err) {
     return res.status(500).send({ msg: err });
   }
 });
+
+// // test change user kyc nationalId
+// router.put("/user-kyc-test", async (req, res) => {
+//   try {
+//     const old = req.body.old_id;
+//     const newId = req.body.new_id;
+//     await UserKYC.findOneAndUpdate(
+//       { nationalId: old },
+//       {
+//         $set: {
+//           nationalId: newId,
+//         },
+//       }
+//     );
+//     let io = req.app.get("io");
+
+//     io.on("connection", (socket) => {
+//       console.log("a user connected");
+//       socket.on("disconnect", () => {
+//         console.log("user disconnected");
+//       });
+//     });
+//     return res.status(200).send({ msg: "cac" });
+//   } catch (err) {
+//     return res.status(500).send({ msg: err.message });
+//   }
+// });
 
 module.exports = router;

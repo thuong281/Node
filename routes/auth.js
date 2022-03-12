@@ -19,6 +19,32 @@ router.post("/register", registerValidation, async (req, res) => {
     name: req.body.name,
     email: req.body.email,
     password: hashPassword,
+    isAdmin: 0,
+  });
+  try {
+    const saveUser = await user.save();
+    return res.status(201).send(saveUser);
+  } catch (err) {
+    return res.status(500).send({ msg: err });
+  }
+});
+
+// register admin
+router.post("/register-admin", registerValidation, async (req, res) => {
+  // check email exist
+  const emailExist = await User.findOne({ email: req.body.email });
+  if (emailExist) return res.status(400).send({ msg: "email exists" });
+
+  // hash password
+  const salt = await bcrypt.genSalt(10);
+  const hashPassword = await bcrypt.hash(req.body.password, salt);
+
+  // create new user
+  const user = new User({
+    name: req.body.name,
+    email: req.body.email,
+    password: hashPassword,
+    isAdmin: 1,
   });
   try {
     const saveUser = await user.save();
@@ -40,7 +66,10 @@ router.post("/login", loginValidation, async (req, res) => {
 
   // create and asign token
   try {
-    const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET);
+    const token = jwt.sign(
+      { _id: user._id, is_admin: user.isAdmin },
+      process.env.TOKEN_SECRET
+    );
     res.header("auth-token", token);
     res.status(200).send({ token: token });
   } catch (err) {
