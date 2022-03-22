@@ -3,6 +3,7 @@ const cloudinary = require("../utils/cloudinary");
 const upload = require("../utils/multer");
 const router = require("express").Router();
 const jwt = require("jsonwebtoken");
+const User = require("../model/User");
 
 // upload new user kyc
 router.post("/upload-kyc", upload.array("image", 2), async (req, res) => {
@@ -38,6 +39,8 @@ router.post("/upload-kyc", upload.array("image", 2), async (req, res) => {
       cloudinary_id_2: results[1].public_id,
     });
 
+    console.log(userKYC);
+
     await userKYC.save();
     return res.status(201).send({ msg: "Upload thành công" });
   } catch (err) {
@@ -45,8 +48,46 @@ router.post("/upload-kyc", upload.array("image", 2), async (req, res) => {
   }
 });
 
-// get all user KYC not verified
+// get current user kyc
 router.get("/user-kyc", async (req, res) => {
+  const jwtToken = req.header("auth-token");
+  const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+  const userId = verified._id;
+
+  const userKYC = await UserKYC.findOne({ userId: userId });
+
+  if (!userKYC)
+    return res.status(404).send({ msg: "Người dùng chưa xác thực" });
+
+  if (userKYC.verified == 0)
+    return res.status(202).send({ msg: "User kyc pending", data: userKYC });
+
+  return res.status(200).send({ msg: "Người đã được xác thực", data: userKYC });
+});
+
+// get other user kyc
+router.get("/other-user-kyc", async (req, res) => {
+  try {
+    const userId = req.query.user_id;
+
+    const userKYC = await UserKYC.findOne({ userId: userId });
+
+    if (!userKYC)
+      return res.status(404).send({ msg: "Người dùng chưa xác thực" });
+
+    if (userKYC.verified == 0)
+      return res.status(202).send({ msg: "User kyc pending", data: userKYC });
+
+    return res
+      .status(200)
+      .send({ msg: "Người đã được xác thực", data: userKYC });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// get all user KYC not verified
+router.get("/users-kyc", async (req, res) => {
   try {
     const jwtToken = req.header("auth-token");
     const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
@@ -55,10 +96,23 @@ router.get("/user-kyc", async (req, res) => {
     if (isAdmin == 0)
       return res.status(400).send({ msg: "Chỉ admin mới được lấy thông tin" });
 
-    const users = await UserKYC.find();
+    const userKycs = await UserKYC.find({ verified: 0 });
+
+    const listUserIdNotVerified = [];
+
+    for (const userKyc of userKycs) {
+      listUserIdNotVerified.push(userKyc.userId);
+    }
+
+    const listUser = await User.find({
+      _id: {
+        $in: listUserIdNotVerified,
+      },
+    });
+
     return res.status(200).send({
-      msg: "Thành công",
-      data: users,
+      msg: "Success",
+      data: listUser,
     });
   } catch (err) {
     return res.status(500).send({ msg: err });
@@ -119,32 +173,5 @@ router.put("/user-kyc/confirm/:_id", async (req, res) => {
     return res.status(500).send({ msg: err });
   }
 });
-
-// // test change user kyc nationalId
-// router.put("/user-kyc-test", async (req, res) => {
-//   try {
-//     const old = req.body.old_id;
-//     const newId = req.body.new_id;
-//     await UserKYC.findOneAndUpdate(
-//       { nationalId: old },
-//       {
-//         $set: {
-//           nationalId: newId,
-//         },
-//       }
-//     );
-//     let io = req.app.get("io");
-
-//     io.on("connection", (socket) => {
-//       console.log("a user connected");
-//       socket.on("disconnect", () => {
-//         console.log("user disconnected");
-//       });
-//     });
-//     return res.status(200).send({ msg: "cac" });
-//   } catch (err) {
-//     return res.status(500).send({ msg: err.message });
-//   }
-// });
 
 module.exports = router;

@@ -71,7 +71,7 @@ router.post("/login", loginValidation, async (req, res) => {
       process.env.TOKEN_SECRET
     );
     res.header("auth-token", token);
-    res.status(200).send({ token: token });
+    res.status(200).send({ data: { token: token } });
   } catch (err) {
     return res.status(500).send({ msg: err });
   }

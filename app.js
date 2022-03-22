@@ -49,3 +49,5 @@ app.use("/", authRoute);
 app.use("/api/user", userKYCRoute);
 app.use("/api/user", userRoute);
 app.use("/api/device", deviceRoute);
+
+global.io = io;

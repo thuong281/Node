@@ -5,10 +5,14 @@ const deviceSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  deviceName: {
+    type: String,
+    required: true,
+  },
   coordinates: [Number],
   lastUpdated: {
     type: Number,
-    default: new Date().getTime(),
+    default: new Date().getTime() - 1000 * 60,
   },
 });
 

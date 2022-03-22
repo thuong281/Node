@@ -2,15 +2,26 @@ const Device = require("../model/Device");
 const jwt = require("jsonwebtoken");
 const router = require("./auth");
 const User = require("../model/User");
+const UserKYC = require("../model/UserKYC");
+const express = require("express");
+const app = express();
 
 // insesrt new device
 router.put("/insert-device", async (req, res) => {
+  const deviceName = req.body.device_name;
+
   const jwtToken = req.header("auth-token");
   const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
   const userId = verified._id;
 
+  const deviceExist = await Device.findOne({ deviceName: deviceName });
+
+  if (deviceExist)
+    return res.status(401).send({ msg: "Duplicate device name" });
+
   try {
     const newDevice = await new Device({
+      deviceName: deviceName,
       userId: userId,
     }).save();
 
@@ -22,13 +33,46 @@ router.put("/insert-device", async (req, res) => {
         },
       }
     );
-    return res.status(201).send({ msg: "Thêm thiết bị thành công" });
+    return res.status(201).send({ msg: "Add device success" });
   } catch (error) {
-    return res.status(500).send({ msg: "Thêm thiết bị thất bại" });
+    return res.status(500).send({ msg: "Server error" });
   }
 });
 
-module.exports = router;
+//delete device
+router.delete("/delete-device/:device_id", async (req, res) => {
+  try {
+    const deviceId = req.params.device_id;
+
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const userId = verified._id;
+
+    const device = await Device.findOne({ _id: deviceId });
+
+    if (!device) return res.status(404).send({ msg: "Device not found" });
+
+    if (device.userId != userId)
+      return res
+        .status(403)
+        .send({ msg: "Do not have right to delete device" });
+
+    const removeDevice = await device.remove();
+
+    const userUpdate = await User.updateOne(
+      { _id: userId },
+      {
+        $pull: {
+          listDevice: deviceId,
+        },
+      }
+    );
+
+    return res.status(200).send({ msg: "Delete device success" });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
 
 // update device new location
 router.put("/update-location", async (req, res) => {
@@ -47,6 +91,9 @@ router.put("/update-location", async (req, res) => {
         },
       }
     );
+
+    io.sockets.emit("update_device_" + deviceId, { lat: lat, long: long });
+
     return res.status(200).send({ msg: "Update thành công" });
   } catch (error) {
     return res.status(500).send({ msg: "Update thất bại" });
@@ -87,7 +134,7 @@ router.get("/get-location", async (req, res) => {
   }
 });
 
-// get list device of user
+// get list device of other user
 router.get("/device-list", async (req, res) => {
   const userId = req.query.user_id;
   try {
@@ -103,11 +150,13 @@ router.get("/device-list", async (req, res) => {
     for (let i = 0; i < listDevice.length; i++) {
       if (currentDate - listDevice[i].lastUpdated > 60 * 1000) {
         listDeviceWithStatus.push({
+          device_name: listDevice[i].deviceName,
           device_id: listDevice[i]._id,
           isOnline: 0,
         });
       } else {
         listDeviceWithStatus.push({
+          device_name: listDevice[i].deviceName,
           device_id: listDevice[i]._id,
           isOnline: 1,
         });
@@ -115,6 +164,45 @@ router.get("/device-list", async (req, res) => {
     }
     return res.status(200).send({ data: listDeviceWithStatus });
   } catch (error) {
-    return res.status(500).send(error);
+    return res.status(500).send("Lỗi server");
   }
 });
+
+// get list device of current user
+router.get("/user-device-list", async (req, res) => {
+  const jwtToken = req.header("auth-token");
+  const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+  const userId = verified._id;
+
+  try {
+    const user = await User.findOne({ _id: userId });
+    const listDeviceId = user.listDevice;
+    const listDevice = await Device.find({
+      _id: {
+        $in: listDeviceId,
+      },
+    });
+    const listDeviceWithStatus = [];
+    const currentDate = new Date().getTime();
+    for (let i = 0; i < listDevice.length; i++) {
+      if (currentDate - listDevice[i].lastUpdated > 60 * 1000) {
+        listDeviceWithStatus.push({
+          device_name: listDevice[i].deviceName,
+          device_id: listDevice[i]._id,
+          isOnline: 0,
+        });
+      } else {
+        listDeviceWithStatus.push({
+          device_name: listDevice[i].deviceName,
+          device_id: listDevice[i]._id,
+          isOnline: 1,
+        });
+      }
+    }
+    return res.status(200).send({ data: listDeviceWithStatus });
+  } catch (error) {
+    return res.status(500).send("Lỗi server");
+  }
+});
+
+module.exports = router;

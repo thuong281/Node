@@ -2,6 +2,8 @@ const User = require("../model/User");
 const router = require("express").Router();
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+const cloudinary = require("../utils/cloudinary");
+const upload = require("../utils/multer");
 
 // get current user
 router.get("/", async (req, res) => {
@@ -19,6 +21,31 @@ router.get("/", async (req, res) => {
     return res.status(200).send({ data: user });
   } catch (err) {
     return res.status(500).send({ msg: "Lỗi server" });
+  }
+});
+
+//change avatar
+router.post("/avatar", upload.single("image"), async (req, res) => {
+  try {
+    //get user id
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const userId = verified._id;
+
+    // upload image to cloudinary
+    const file = req.file;
+    const avatarUpload = await cloudinary.uploader.upload(file.path);
+
+    // save user avatar url
+    const userUpdate = await User.findOneAndUpdate(
+      { _id: userId },
+      {
+        avatar: avatarUpload.secure_url,
+      }
+    );
+    return res.status(204).send({ msg: "Upload successfully" });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
   }
 });
 
@@ -105,6 +132,30 @@ router.get("/pending-follow-request", async (req, res) => {
   }
 });
 
+// get list current user follow
+router.get("/follow", async (req, res) => {
+  try {
+    // get user id
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const userId = verified._id;
+
+    // get list user id
+    const user = await User.findById(userId);
+    const listUserFollowing = user.userFollowing;
+
+    // get detail list user
+    const listUserDetail = await User.find({
+      _id: {
+        $in: listUserFollowing,
+      },
+    });
+    return res.status(200).send({ data: listUserDetail });
+  } catch (err) {
+    return res.status(500).send({ msg: "Lỗi server" });
+  }
+});
+
 // approve/reject following request
 router.put("/confirm-follow", async (req, res) => {
   try {
@@ -165,7 +216,7 @@ router.put("/confirm-follow", async (req, res) => {
           }
         )
       );
-      return res.status(200).send({ msg: "Chấp nhận thành công" });
+      return res.status(200).send({ msg: "Approve Successfully" });
     } else if (approve == 0) {
       // reject
       await User.updateOne(
@@ -185,10 +236,72 @@ router.put("/confirm-follow", async (req, res) => {
           }
         )
       );
-      return res.status(200).send({ msg: "Chấp nhận thành công" });
+      return res.status(200).send({ msg: "Reject Successfully" });
     }
   } catch (err) {
     return res.status(500).send({ msg: "Lỗi server" });
+  }
+});
+
+// find user and get request status
+// 0 - not request
+// 1 - request sent but not accepted yet
+// 2 - already following
+router.get("/find-user/", async (req, res) => {
+  try {
+    const word = req.query.word;
+
+    // get user id
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const userId = verified._id;
+
+    const user = await User.findById(mongoose.Types.ObjectId(userId));
+    const listUserFollowing = user.userFollowing;
+    const listUserFollowPending = user.userFollowingPending;
+
+    const listUser = await User.find({
+      email: { $regex: word, $options: "i" },
+    });
+
+    const listResult = [];
+
+    for (const user of listUser) {
+      if (user._id == userId) {
+        continue;
+      }
+      if (listUserFollowing.includes(user._id)) {
+        listResult.push({
+          user_name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          user_id: user._id,
+          status: 2,
+        });
+        continue;
+      }
+      if (listUserFollowPending.includes(user._id)) {
+        listResult.push({
+          user_name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          user_id: user._id,
+          status: 1,
+        });
+        continue;
+      }
+      listResult.push({
+        user_name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        user_id: user._id,
+        status: 0,
+      });
+    }
+
+    return res.status(200).send({ data: listResult });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
   }
 });
 
