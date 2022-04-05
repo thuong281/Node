@@ -8,15 +8,14 @@ var bodyParser = require("body-parser");
 dotenv.config();
 
 const server = app.listen(8000, () => {
-  console.log("Sục cặc bắn tinh");
+  console.log("Server is running");
 });
 
+// socket
 const io = require("socket.io")(server);
-app.set("io", io);
 
 io.on("connection", (socket) => {
   console.log("a user connected");
-  io.sockets.emit("receive_msg", { data: "cac" });
   socket.on("disconnect", () => {
     console.log("user disconnected");
   });
@@ -25,7 +24,7 @@ io.on("connection", (socket) => {
 // conect to DB
 mongoose.connect(process.env.DB_CONNECT, (err, db) => {
   if (err) console.log(err);
-  console.log("DB sục cặc");
+  console.log("DB connected");
 });
 
 // middleware
@@ -39,6 +38,7 @@ const authRoute = require("./routes/auth");
 const userKYCRoute = require("./routes/userKYC");
 const userRoute = require("./routes/user");
 const deviceRoute = require("./routes/device");
+const registerRoute = require("./routes/register");
 
 // route middlewares
 
@@ -48,6 +48,11 @@ app.use("/", authRoute);
 // api user
 app.use("/api/user", userKYCRoute);
 app.use("/api/user", userRoute);
+
+// api device
 app.use("/api/device", deviceRoute);
+
+// api register
+app.use("/api/register", registerRoute);
 
 global.io = io;

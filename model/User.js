@@ -17,23 +17,23 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  userFollowerPending: {
-    type: Array,
-    default: [],
-  },
-  userFollower: {
-    type: Array,
-    default: [],
-  },
-  userFollowing: {
-    type: Array,
-    default: [],
-  },
-  userFollowingPending: {
-    type: Array,
-    default: [],
-  },
-  listDevice: [String],
+  // userFollowerPending: {
+  //   type: Array,
+  //   default: [],
+  // },
+  // userFollower: {
+  //   type: Array,
+  //   default: [],
+  // },
+  // userFollowing: {
+  //   type: Array,
+  //   default: [],
+  // },
+  // userFollowingPending: {
+  //   type: Array,
+  //   default: [],
+  // },
+  // listDevice: [String],
   isAdmin: {
     type: String,
     required: true,

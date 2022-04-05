@@ -87,7 +87,9 @@ router.get("/other-user-kyc", async (req, res) => {
 });
 
 // get all user KYC not verified
-router.get("/users-kyc", async (req, res) => {
+router.get("/users-kyc/:page", async (req, res) => {
+  let page = req.params.page || 1;
+
   try {
     const jwtToken = req.header("auth-token");
     const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
@@ -112,7 +114,7 @@ router.get("/users-kyc", async (req, res) => {
 
     return res.status(200).send({
       msg: "Success",
-      data: listUser,
+      data: listUser.slice((page - 1) * 20, page * 20),
     });
   } catch (err) {
     return res.status(500).send({ msg: err });

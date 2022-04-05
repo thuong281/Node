@@ -2,6 +2,7 @@ const Device = require("../model/Device");
 const jwt = require("jsonwebtoken");
 const router = require("./auth");
 const User = require("../model/User");
+const Register = require("../model/Register");
 const UserKYC = require("../model/UserKYC");
 const express = require("express");
 const app = express();
@@ -164,7 +165,7 @@ router.get("/device-list", async (req, res) => {
     }
     return res.status(200).send({ data: listDeviceWithStatus });
   } catch (error) {
-    return res.status(500).send("Lỗi server");
+    return res.status(500).send("Server error");
   }
 });
 
@@ -202,6 +203,194 @@ router.get("/user-device-list", async (req, res) => {
     return res.status(200).send({ data: listDeviceWithStatus });
   } catch (error) {
     return res.status(500).send("Lỗi server");
+  }
+});
+
+// new part
+
+// insert new device
+router.post("/insert", async (req, res) => {
+  const registerName = req.body.register_name;
+  const registerNationalId = req.body.register_national_id;
+  const registerPhone = req.body.register_phone;
+  const devicePlate = req.body.device_plate;
+  const deviceColor = req.body.device_color;
+  const deviceManufacturer = req.body.device_manufacturer;
+  const deviceBuyDate = req.body.device_buy_date;
+
+  if (
+    !registerName ||
+    !registerNationalId ||
+    !registerPhone ||
+    !devicePlate ||
+    !deviceColor ||
+    !deviceManufacturer ||
+    !deviceBuyDate
+  ) {
+    return res.status(400).send({ msg: "Missing parameter" });
+  }
+  try {
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const userName = verified.user_name;
+
+    const findDevice = await Device.findOne({ devicePlate: devicePlate });
+
+    if (findDevice) {
+      return res.status(400).send({ msg: "This number plate already existed" });
+    }
+
+    const register = await Register.findOne({ nationalId: registerNationalId });
+    if (register) {
+      if (registerName != register.name) {
+        return res
+          .status(400)
+          .send({ msg: "Register existed but name doesn't match" });
+      }
+
+      if (registerPhone != register.phoneNumber) {
+        return res
+          .status(400)
+          .send({ msg: "Register existed but phone number doesn't match" });
+      }
+
+      const newDevice = new Device({
+        registerNationalId: registerNationalId,
+        devicePlate: devicePlate,
+        deviceColor: deviceColor,
+        deviceManufacturer: deviceManufacturer,
+        createdUser: userName,
+        buyDate: deviceBuyDate,
+      });
+
+      const saveDevice = await newDevice.save();
+
+      const addDeviceToRegister = await Register.findOneAndUpdate(
+        { nationalId: registerNationalId },
+        {
+          $push: {
+            listDeviceId: newDevice._id,
+          },
+        }
+      );
+    } else {
+      const newRegister = new Register({
+        name: registerName,
+        nationalId: registerNationalId,
+        phoneNumber: registerPhone,
+      });
+
+      const saveRegister = await newRegister.save();
+
+      const newDevice = new Device({
+        registerNationalId: saveRegister.nationalId,
+        devicePlate: devicePlate,
+        deviceColor: deviceColor,
+        deviceManufacturer: deviceManufacturer,
+        createdUser: userName,
+        updatedUser: userName,
+        buyDate: deviceBuyDate,
+        createdDate: new Date().getTime(),
+        lastUpdated: new Date().getTime(),
+      });
+
+      const saveDevice = await newDevice.save();
+
+      const addDeviceToRegister = await Register.findOneAndUpdate(
+        { nationalId: registerNationalId },
+        {
+          $push: {
+            listDeviceId: newDevice._id,
+          },
+        }
+      );
+    }
+    return res.status(201).send({ msg: "Device created successfully" });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// get inserted device history of current user
+router.get("/insert-history/:page", async (req, res) => {
+  let page = req.params.page || 1;
+  try {
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const userName = verified.user_name;
+
+    const listDevice = await Device.find({ createdUser: userName }).sort({
+      createdDate: -1,
+    });
+
+    return res.status(200).send({
+      msg: "Success",
+      data: listDevice.slice((page - 1) * 10, page * 10),
+    });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// search device by plate number
+router.get("/search", async (req, res) => {
+  try {
+    const word = req.query.word;
+
+    const listDevice = await Device.find({
+      devicePlate: { $regex: word, $options: "i" },
+    });
+
+    return res.status(200).send({ msg: "Success", data: listDevice });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// get device detail by id
+router.get("/", async (req, res) => {
+  try {
+    const deviceId = req.query.id;
+    const device = await Device.findOne({ _id: deviceId });
+    return res.status(200).send({ msg: "Success", data: device });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// update device
+router.put("/update", async (req, res) => {
+  try {
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const userName = verified.user_name;
+
+    const deviceId = req.body.device_id;
+    const devicePlate = req.body.device_palate;
+    const deviceColor = req.body.device_color;
+    const deviceManufacturer = req.body.device_manufacturer;
+    const deviceBuyDate = req.body.device_buy_date;
+
+    if (!devicePlate || !deviceColor || !deviceManufacturer || !deviceBuyDate) {
+      return res.status(400).send({ msg: "Please fill all the field" });
+    }
+
+    await Device.findOneAndUpdate(
+      { _id: deviceId },
+      {
+        $set: {
+          devicePlate: devicePlate,
+          deviceColor: deviceColor,
+          deviceManufacturer: deviceManufacturer,
+          deviceBuyDate: deviceBuyDate,
+          lastUpdated: Date.now(),
+          updatedUser: userName,
+        },
+      }
+    );
+    return res.status(204).send({ msg: "Success" });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
   }
 });
 
