@@ -5,6 +5,7 @@ const User = require("../model/User");
 const Register = require("../model/Register");
 const UserKYC = require("../model/UserKYC");
 const express = require("express");
+const res = require("express/lib/response");
 const app = express();
 
 // insesrt new device
@@ -372,7 +373,7 @@ router.put("/update", async (req, res) => {
     const deviceBuyDate = req.body.device_buy_date;
 
     if (!devicePlate || !deviceColor || !deviceManufacturer || !deviceBuyDate) {
-      return res.status(400).send({ msg: "Please fill all the field" });
+      return res.status(400).send({ msg: "Please fill all the fielddd" });
     }
 
     await Device.findOneAndUpdate(
@@ -389,6 +390,34 @@ router.put("/update", async (req, res) => {
       }
     );
     return res.status(204).send({ msg: "Success" });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// remove device
+router.delete("/:device_id", async (req, res) => {
+  try {
+    const device = await Device.findOne({ _id: req.params.device_id });
+
+    if (!device) {
+      return res.status(404).send({ msg: "Device not found" });
+    }
+
+    const register = await Register.updateOne(
+      {
+        nationalId: device.registerNationalId,
+      },
+      {
+        $pull: {
+          listDeviceId: req.params.device_id,
+        },
+      }
+    );
+
+    await device.remove();
+
+    return res.status(200).send({ msg: "Delete Successfully" });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });
   }

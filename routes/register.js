@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+const Device = require("../model/Device");
 const Register = require("../model/Register");
 const router = require("express").Router();
 
@@ -12,17 +13,79 @@ router.get("/search", async (req, res) => {
       nationalId: { $regex: word, $options: "i" },
     });
 
-    const listResult = [];
+    // const listResult = [];
 
-    for (const register of listRegister) {
-      listResult.push({
-        name: register.name,
-        national_id: register.nationalId,
-        phone_number: register.phoneNumber,
-        device_count: register.listDeviceId.length,
-      });
+    // for (const register of listRegister) {
+    //   listResult.push({
+    //     name: register.name,
+    //     national_id: register.nationalId,
+    //     phone_number: register.phoneNumber,
+    //     device_count: register.listDeviceId.length,
+    //   });
+    // }
+    return res.status(200).send({ msg: "Success", data: listRegister });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// get single register by id
+router.get("/", async (req, res) => {
+  try {
+    const id = req.query.id;
+
+    const register = await Register.findById(id);
+
+    return res.status(200).send({ msg: "Success", data: register });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// get list device of register
+router.get("/devices", async (req, res) => {
+  try {
+    const id = req.query.id;
+
+    const register = await Register.findById(id);
+
+    const listDevice = [];
+
+    const listDeviceId = register.listDeviceId;
+    for (const deviceId of listDeviceId) {
+      listDevice.push(await Device.findOne({ _id: deviceId }));
     }
-    return res.status(200).send({ msg: "Success", data: listResult });
+
+    return res.status(200).send({ msg: "Success", data: listDevice });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// update register
+router.put("/update", async (req, res) => {
+  try {
+    const registerId = req.body.register_id;
+    const name = req.body.name;
+    const nationalId = req.body.national_id;
+    const phoneNumber = req.body.phone_number;
+
+    if (!name || !nationalId || !phoneNumber) {
+      return res.status(400).send({ msg: "Please fillll all the field" });
+    }
+
+    await Register.findOneAndUpdate(
+      { _id: registerId },
+      {
+        $set: {
+          name: name,
+          nationalId: nationalId,
+          phoneNumber: phoneNumber,
+        },
+      }
+    );
+
+    return res.status(204).send({ msg: "Success" });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });
   }
