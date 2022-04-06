@@ -89,7 +89,7 @@ router.put("/update-location", async (req, res) => {
         $set: {
           coordinates: [],
           coordinates: [lat, long],
-          lastUpdated: Date.now(),
+          updatedLocationTime: Date.now(),
         },
       }
     );
@@ -342,6 +342,16 @@ router.get("/search", async (req, res) => {
       devicePlate: { $regex: word, $options: "i" },
     });
 
+    const currentDate = new Date().getTime();
+
+    for (const device of listDevice) {
+      if (currentDate - device.updatedLocationTime > 60 * 1000) {
+        device["isActive"] = false;
+      } else {
+        device["isActive"] = true;
+      }
+    }
+
     return res.status(200).send({ msg: "Success", data: listDevice });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });
@@ -353,6 +363,15 @@ router.get("/", async (req, res) => {
   try {
     const deviceId = req.query.id;
     const device = await Device.findOne({ _id: deviceId });
+
+    const currentDate = new Date().getTime();
+
+    if (currentDate - device.updatedLocationTime > 60 * 1000) {
+      device["isActive"] = false;
+    } else {
+      device["isActive"] = true;
+    }
+
     return res.status(200).send({ msg: "Success", data: device });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });

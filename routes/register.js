@@ -53,7 +53,17 @@ router.get("/devices", async (req, res) => {
 
     const listDeviceId = register.listDeviceId;
     for (const deviceId of listDeviceId) {
-      listDevice.push(await Device.findOne({ _id: deviceId }));
+      const device = await Device.findOne({ _id: deviceId });
+
+      const currentDate = new Date().getTime();
+
+      if (currentDate - device.updatedLocationTime > 60 * 1000) {
+        device["isActive"] = false;
+      } else {
+        device["isActive"] = true;
+      }
+
+      listDevice.push(device);
     }
 
     return res.status(200).send({ msg: "Success", data: listDevice });
@@ -86,6 +96,23 @@ router.put("/update", async (req, res) => {
     );
 
     return res.status(204).send({ msg: "Success" });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// delete register
+router.delete("/:id", async (req, res) => {
+  try {
+    const registerId = req.params.id;
+    const register = await Register.findById(registerId);
+    const listDeviceId = register.listDeviceId;
+    for (const deviceId of listDeviceId) {
+      await Device.findByIdAndDelete(deviceId);
+    }
+    await register.delete();
+
+    return res.status(200).send({ msg: "Success" });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });
   }

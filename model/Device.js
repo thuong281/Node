@@ -38,6 +38,15 @@ const deviceSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  isActive: {
+    type: Boolean,
+    required: true,
+  },
+  updatedLocationTime: {
+    type: Number,
+    required: true,
+    default: new Date().getTime() - 60 * 1000,
+  },
 });
 
 module.exports = mongoose.model("Device", deviceSchema);
