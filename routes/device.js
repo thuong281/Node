@@ -108,21 +108,17 @@ router.get("/get-location", async (req, res) => {
   try {
     const device = await Device.findOne({ _id: deviceId });
     if (!device) {
-      return res.status(404).send({ msg: "Không tìm thấy thiết bị" });
+      return res.status(404).send({ msg: "Device not found" });
     }
-    const date = device.lastUpdated;
+    const date = device.updatedLocationTime;
     const currentDate = new Date().getTime();
 
     if (device.coordinates.length < 1) {
-      return res
-        .status(400)
-        .send({ msg: "Thiết bị chưa được cập nhật vị trí" });
+      return res.status(400).send({ msg: "GPS is not active" });
     }
 
     if (currentDate - date > 60 * 1000) {
-      return res
-        .status(400)
-        .send({ msg: "Thiết bị chưa được cập nhật vị trí" });
+      return res.status(400).send({ msg: "GPS is not active" });
     } else {
       return res.status(200).send({
         data: {
@@ -293,6 +289,7 @@ router.post("/insert", async (req, res) => {
         buyDate: deviceBuyDate,
         createdDate: new Date().getTime(),
         lastUpdated: new Date().getTime(),
+        isActive: false,
       });
 
       const saveDevice = await newDevice.save();
@@ -320,13 +317,16 @@ router.get("/insert-history/:page", async (req, res) => {
     const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
     const userName = verified.user_name;
 
-    const listDevice = await Device.find({ createdUser: userName }).sort({
-      createdDate: -1,
-    });
+    const listDevice = await Device.find({ createdUser: userName })
+      .sort({
+        createdDate: -1,
+      })
+      .limit(10)
+      .skip(10 * (page - 1));
 
     return res.status(200).send({
       msg: "Success",
-      data: listDevice.slice((page - 1) * 10, page * 10),
+      data: listDevice,
     });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });
@@ -437,6 +437,41 @@ router.delete("/:device_id", async (req, res) => {
     await device.remove();
 
     return res.status(200).send({ msg: "Delete Successfully" });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// // count all device
+// router.get("/count", async (req, res) => {
+//   try {
+//     const count = Device.find().count();
+
+//     return res.status(200).send({ msg: "Success", data: count });
+//   } catch (error) {
+//     return res.status(500).send({ msg: "Server error" });
+//   }
+// });
+
+// count data
+router.get("/count", async (req, res) => {
+  try {
+    const currentDate = new Date().getTime();
+    const previousDate = new Date().getTime() - 60 * 1000;
+    const devices = await Device.countDocuments();
+    const activeDevices = await Device.countDocuments({
+      updatedLocationTime: { $gt: previousDate, $lt: currentDate },
+    });
+    const registers = await Register.countDocuments();
+
+    return res.status(200).send({
+      msg: "Success",
+      data: {
+        devices: devices,
+        active_devices: activeDevices,
+        registers: registers,
+      },
+    });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });
   }

@@ -42,6 +42,19 @@ router.get("/", async (req, res) => {
   }
 });
 
+// get single register by nationalId
+router.get("/national-id", async (req, res) => {
+  try {
+    const id = req.query.id;
+
+    const register = await Register.findOne({ nationalId: id });
+
+    return res.status(200).send({ msg: "Success", data: register });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
 // get list device of register
 router.get("/devices", async (req, res) => {
   try {

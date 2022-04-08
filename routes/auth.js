@@ -23,9 +23,9 @@ router.post("/register", registerValidation, async (req, res) => {
   });
   try {
     const saveUser = await user.save();
-    return res.status(201).send(saveUser);
+    return res.status(201).send({ msg: "User created successfully" });
   } catch (err) {
-    return res.status(500).send({ msg: err });
+    return res.status(500).send({ msg: "Server error" });
   }
 });
 
@@ -48,9 +48,9 @@ router.post("/register-admin", registerValidation, async (req, res) => {
   });
   try {
     const saveUser = await user.save();
-    return res.status(201).send(saveUser);
+    return res.status(201).send({ msg: "User created successfully" });
   } catch (err) {
-    return res.status(500).send({ msg: err });
+    return res.status(500).send({ msg: "Server error" });
   }
 });
 
