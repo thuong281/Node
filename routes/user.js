@@ -261,7 +261,7 @@ router.get("/find-user/", async (req, res) => {
     const listUserFollowPending = user.userFollowingPending;
 
     const listUser = await User.find({
-      email: { $regex: word, $options: "i" },
+      userName: { $regex: word, $options: "i" },
     });
 
     const listResult = [];
@@ -273,7 +273,7 @@ router.get("/find-user/", async (req, res) => {
       if (listUserFollowing.includes(user._id)) {
         listResult.push({
           user_name: user.name,
-          email: user.email,
+          username: user.userName,
           avatar: user.avatar,
           user_id: user._id,
           status: 2,
@@ -283,7 +283,7 @@ router.get("/find-user/", async (req, res) => {
       if (listUserFollowPending.includes(user._id)) {
         listResult.push({
           user_name: user.name,
-          email: user.email,
+          username: user.username,
           avatar: user.avatar,
           user_id: user._id,
           status: 1,
@@ -292,7 +292,7 @@ router.get("/find-user/", async (req, res) => {
       }
       listResult.push({
         user_name: user.name,
-        email: user.email,
+        username: user.username,
         avatar: user.avatar,
         user_id: user._id,
         status: 0,

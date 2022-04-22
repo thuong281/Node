@@ -131,4 +131,17 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// get all registers
+router.get("/all", async (req, res) => {
+  try {
+    const registers = await Register.find().sort({
+      name: 1,
+    });
+
+    return res.status(200).send({ msg: "Success", data: registers });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
 module.exports = router;

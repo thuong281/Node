@@ -207,8 +207,9 @@ router.get("/user-device-list", async (req, res) => {
 
 // insert new device
 router.post("/insert", async (req, res) => {
+  const isOrganization = req.body.is_organization;
   const registerName = req.body.register_name;
-  const registerNationalId = req.body.register_national_id;
+  const registerId = req.body.register_id;
   const registerPhone = req.body.register_phone;
   const devicePlate = req.body.device_plate;
   const deviceColor = req.body.device_color;
@@ -216,15 +217,16 @@ router.post("/insert", async (req, res) => {
   const deviceBuyDate = req.body.device_buy_date;
 
   if (
+    !isOrganization ||
     !registerName ||
-    !registerNationalId ||
-    !registerPhone ||
+    !registerId ||
     !devicePlate ||
     !deviceColor ||
     !deviceManufacturer ||
-    !deviceBuyDate
+    !deviceBuyDate ||
+    deviceBuyDate == "Select device buy date"
   ) {
-    return res.status(400).send({ msg: "Missing parameter" });
+    return res.status(400).send({ msg: "Please fill all the field" });
   }
   try {
     const jwtToken = req.header("auth-token");
@@ -237,7 +239,7 @@ router.post("/insert", async (req, res) => {
       return res.status(400).send({ msg: "This number plate already existed" });
     }
 
-    const register = await Register.findOne({ nationalId: registerNationalId });
+    const register = await Register.findOne({ nationalId: registerId });
     if (register) {
       if (registerName != register.name) {
         return res
@@ -252,18 +254,20 @@ router.post("/insert", async (req, res) => {
       }
 
       const newDevice = new Device({
-        registerNationalId: registerNationalId,
+        registerNationalId: registerId,
         devicePlate: devicePlate,
         deviceColor: deviceColor,
         deviceManufacturer: deviceManufacturer,
         createdUser: userName,
         buyDate: deviceBuyDate,
+        isActive: false,
+        isOrganization: isOrganization,
       });
 
       const saveDevice = await newDevice.save();
 
       const addDeviceToRegister = await Register.findOneAndUpdate(
-        { nationalId: registerNationalId },
+        { nationalId: registerId },
         {
           $push: {
             listDeviceId: newDevice._id,
@@ -273,7 +277,7 @@ router.post("/insert", async (req, res) => {
     } else {
       const newRegister = new Register({
         name: registerName,
-        nationalId: registerNationalId,
+        nationalId: registerId,
         phoneNumber: registerPhone,
       });
 
@@ -290,12 +294,13 @@ router.post("/insert", async (req, res) => {
         createdDate: new Date().getTime(),
         lastUpdated: new Date().getTime(),
         isActive: false,
+        isOrganization: isOrganization,
       });
 
       const saveDevice = await newDevice.save();
 
       const addDeviceToRegister = await Register.findOneAndUpdate(
-        { nationalId: registerNationalId },
+        { nationalId: registerId },
         {
           $push: {
             listDeviceId: newDevice._id,
@@ -442,17 +447,6 @@ router.delete("/:device_id", async (req, res) => {
   }
 });
 
-// // count all device
-// router.get("/count", async (req, res) => {
-//   try {
-//     const count = Device.find().count();
-
-//     return res.status(200).send({ msg: "Success", data: count });
-//   } catch (error) {
-//     return res.status(500).send({ msg: "Server error" });
-//   }
-// });
-
 // count data
 router.get("/count", async (req, res) => {
   try {
@@ -472,6 +466,58 @@ router.get("/count", async (req, res) => {
         registers: registers,
       },
     });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// get all active device
+router.get("/active", async (req, res) => {
+  try {
+    const activeDevices = await Device.find().sort({
+      devicePlate: 1,
+    });
+
+    const listDevice = [];
+
+    for (const device of activeDevices) {
+      const currentDate = new Date().getTime();
+
+      if (currentDate - device.updatedLocationTime > 60 * 1000) {
+        device["isActive"] = false;
+      } else {
+        device["isActive"] = true;
+        listDevice.push(device);
+      }
+    }
+
+    return res.status(200).send({ msg: "Success", data: listDevice });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// get all devices
+router.get("/all", async (req, res) => {
+  try {
+    const activeDevices = await Device.find().sort({
+      devicePlate: 1,
+    });
+
+    const listDevice = [];
+
+    for (const device of activeDevices) {
+      const currentDate = new Date().getTime();
+
+      if (currentDate - device.updatedLocationTime > 60 * 1000) {
+        device["isActive"] = false;
+      } else {
+        device["isActive"] = true;
+      }
+      listDevice.push(device);
+    }
+
+    return res.status(200).send({ msg: "Success", data: listDevice });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });
   }

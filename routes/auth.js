@@ -6,9 +6,9 @@ const { registerValidation, loginValidation } = require("../validation");
 
 // register
 router.post("/register", registerValidation, async (req, res) => {
-  // check email exist
-  const emailExist = await User.findOne({ email: req.body.email });
-  if (emailExist) return res.status(400).send({ msg: "email exists" });
+  // check user name exist
+  const userNameExist = await User.findOne({ userName: req.body.user_name });
+  if (userNameExist) return res.status(400).send({ msg: "username exists" });
 
   // hash password
   const salt = await bcrypt.genSalt(10);
@@ -17,7 +17,7 @@ router.post("/register", registerValidation, async (req, res) => {
   // create new user
   const user = new User({
     name: req.body.name,
-    email: req.body.email,
+    userName: req.body.user_name,
     password: hashPassword,
     isAdmin: 0,
   });
@@ -31,9 +31,9 @@ router.post("/register", registerValidation, async (req, res) => {
 
 // register admin
 router.post("/register-admin", registerValidation, async (req, res) => {
-  // check email exist
-  const emailExist = await User.findOne({ email: req.body.email });
-  if (emailExist) return res.status(400).send({ msg: "email exists" });
+  // check username exist
+  const userNameExist = await User.findOne({ userName: req.body.user_name });
+  if (userNameExist) return res.status(400).send({ msg: "username exists" });
 
   // hash password
   const salt = await bcrypt.genSalt(10);
@@ -42,7 +42,7 @@ router.post("/register-admin", registerValidation, async (req, res) => {
   // create new user
   const user = new User({
     name: req.body.name,
-    email: req.body.email,
+    userName: req.body.user_name,
     password: hashPassword,
     isAdmin: 1,
   });
@@ -56,9 +56,9 @@ router.post("/register-admin", registerValidation, async (req, res) => {
 
 // login
 router.post("/login", loginValidation, async (req, res) => {
-  // check email exist
-  const user = await User.findOne({ email: req.body.email });
-  if (!user) return res.status(400).send({ msg: "email not exists" });
+  // check username exist
+  const user = await User.findOne({ userName: req.body.user_name });
+  if (!user) return res.status(400).send({ msg: "username not exists" });
 
   // check password
   const validPassword = await bcrypt.compare(req.body.password, user.password);
