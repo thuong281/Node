@@ -4,6 +4,8 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const cloudinary = require("../utils/cloudinary");
 const upload = require("../utils/multer");
+const { changePasswordValidation } = require("../validation");
+const bcrypt = require("bcryptjs");
 
 // get current user
 router.get("/", async (req, res) => {
@@ -300,6 +302,38 @@ router.get("/find-user/", async (req, res) => {
     }
 
     return res.status(200).send({ data: listResult });
+  } catch (error) {
+    return res.status(500).send({ msg: "Server error" });
+  }
+});
+
+// change password
+router.post("/change-password", changePasswordValidation, async (req, res) => {
+  try {
+    // get user id
+    const jwtToken = req.header("auth-token");
+    const verified = jwt.verify(jwtToken, process.env.TOKEN_SECRET);
+    const userId = verified._id;
+
+    const user = await User.findById(mongoose.Types.ObjectId(userId));
+
+    const validPassword = await bcrypt.compare(
+      req.body.old_password,
+      user.password
+    );
+    if (!validPassword) return res.status(400).send({ msg: "Wrong password" });
+
+    // hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(req.body.new_password, salt);
+
+    await User.findByIdAndUpdate(mongoose.Types.ObjectId(userId), {
+      $set: {
+        password: hashPassword,
+      },
+    });
+
+    return res.status(201).send({ msg: "User password changed successfully" });
   } catch (error) {
     return res.status(500).send({ msg: "Server error" });
   }

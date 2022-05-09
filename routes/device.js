@@ -279,6 +279,7 @@ router.post("/insert", async (req, res) => {
         name: registerName,
         nationalId: registerId,
         phoneNumber: registerPhone,
+        isOrganization: isOrganization,
       });
 
       const saveRegister = await newRegister.save();

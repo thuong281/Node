@@ -2,7 +2,11 @@ const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const User = require("../model/User");
 const jwt = require("jsonwebtoken");
-const { registerValidation, loginValidation } = require("../validation");
+const {
+  registerValidation,
+  loginValidation,
+  changePasswordValidation,
+} = require("../validation");
 
 // register
 router.post("/register", registerValidation, async (req, res) => {
@@ -73,7 +77,7 @@ router.post("/login", loginValidation, async (req, res) => {
     res.header("auth-token", token);
     res.status(200).send({ data: { token: token } });
   } catch (err) {
-    return res.status(500).send({ msg: err });
+    return res.status(500).send({ msg: "Server error" });
   }
 });
 
