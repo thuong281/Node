@@ -54,5 +54,3 @@ app.use("/api/device", deviceRoute);
 
 // api register
 app.use("/api/register", registerRoute);
-
-global.io = io;
